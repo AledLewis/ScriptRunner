@@ -1,10 +1,7 @@
 package com.fivium.scriptrunner2.install;
 
 
-import com.fivium.scriptrunner2.CommandLineOption;
-import com.fivium.scriptrunner2.CommandLineWrapper;
-import com.fivium.scriptrunner2.Logger;
-import com.fivium.scriptrunner2.PatchScript;
+import com.fivium.scriptrunner2.*;
 import com.fivium.scriptrunner2.database.DatabaseConnection;
 import com.fivium.scriptrunner2.database.PatchRunController;
 import com.fivium.scriptrunner2.database.PromotionController;
@@ -74,7 +71,7 @@ public class Installer {
       if(!mCommandLineWrapper.hasOption(CommandLineOption.PROMOTE_USER)){
         mCommandLineWrapper.overrideOption(CommandLineOption.PROMOTE_USER, "SYS");
       }
-      lDatabaseConnection = DatabaseConnection.createConnection(mCommandLineWrapper, true, false, false);
+      lDatabaseConnection = DatabaseConnection.createConnection(new CommandLineDatabaseConnectionParams(this.mCommandLineWrapper), true, false, false);
     }
     catch (ExPromote e) {
       throw new ExInstaller("Failed to connect to database: " + e.getMessage(), e);
@@ -102,7 +99,7 @@ public class Installer {
     //Always use the JDBC string from the previous connection to avoid re-prompting the user for details
     mCommandLineWrapper.overrideOption(CommandLineOption.JDBC_CONNECT_STRING, lDatabaseConnection.getJDBCConnectString());
     try {
-      lDatabaseConnection = DatabaseConnection.createConnection(mCommandLineWrapper, false, true, false);
+      lDatabaseConnection = DatabaseConnection.createConnection(new CommandLineDatabaseConnectionParams(this.mCommandLineWrapper), false, true, false);
     }
     catch (ExPromote e) {
       throw new ExInstaller("Failed to connect to database: " + e.getMessage(), e);

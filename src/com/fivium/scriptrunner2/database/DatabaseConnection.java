@@ -3,6 +3,7 @@ package com.fivium.scriptrunner2.database;
 
 import com.fivium.scriptrunner2.CommandLineOption;
 import com.fivium.scriptrunner2.CommandLineWrapper;
+import com.fivium.scriptrunner2.DatabaseConnectionParams;
 import com.fivium.scriptrunner2.Logger;
 import com.fivium.scriptrunner2.ex.ExFatalError;
 import com.fivium.scriptrunner2.ex.ExPromote;
@@ -34,7 +35,7 @@ public class DatabaseConnection {
   private static final String GRANT_PROXY_PROMOTEUSER_BIND =  ":promoteuser";
   private static final String GRANT_PROXY_SQL =  "ALTER USER " + GRANT_PROXY_GRANTEE_BIND + " GRANT CONNECT THROUGH " + GRANT_PROXY_PROMOTEUSER_BIND;
   
-  private static final String JDBC_PREFIX =  "jdbc:oracle:thin:@";
+
   
   public static final String DEFAULT_PROMOTE_USER = "PROMOTEMGR";
   
@@ -53,107 +54,54 @@ public class DatabaseConnection {
   private boolean mIsProxyConnectionActive = false;
   private boolean mIsSysDBAConnectionActive = false;
   private String mProxyUserName = "";
-    
-  /**
-   * Establishes a JDBC connection string from the various combinations of arguments that can be provided to the ScriptRunner
-   * command line. In order of precedence, these are:
-   * <ol>
-   * <li>A fully-specified JDBC connection string</li>
-   * <li>Individual arguments for host, port and SID or service name (SID takes priority if both are specified)</li>
-   * <li>Prompted stdin input for host, port and SID</li>
-   * </ol>
-   * @param pCommandLine Command line options.
-   * @return A JDBC connection string.
-   */
-  private static String establishConnectionString(CommandLineWrapper pCommandLine){
-    
-    String lConnectionString;
-    String lCmdLineJDBC = pCommandLine.getOption(CommandLineOption.JDBC_CONNECT_STRING);
-    if(!XFUtil.isNull(lCmdLineJDBC)){
-      //1) if specified in full, use that
-      lConnectionString = lCmdLineJDBC;
-    }
-    else {
-      //2) if not specified, look for individual arguments
-      String lHostName = pCommandLine.getOption(CommandLineOption.DB_HOST);
-      String lPort = pCommandLine.getOption(CommandLineOption.DB_PORT);
-      String lSID = pCommandLine.getOption(CommandLineOption.DB_SID);
-      String lServiceName = pCommandLine.getOption(CommandLineOption.DB_SERVICE_NAME);
-      
-      //3) If still not specified, prompt user
-      if(XFUtil.isNull(lHostName)){
-        lHostName = CommandLineWrapper.readArg("Enter database hostname", false);
-      }
-      
-      if(XFUtil.isNull(lPort)){
-        lPort = CommandLineWrapper.readArg("Enter database port", false);
-      }
-      
-      if(XFUtil.isNull(lSID) && XFUtil.isNull(lServiceName)){
-        lSID = CommandLineWrapper.readArg("Enter database SID (for service name, specify -service argument)", false);
-      }      
-      
-      if(!XFUtil.isNull(lSID)){
-        //Construct SID connect syntax if a SID was specified
-        lConnectionString = JDBC_PREFIX + lHostName + ":" + lPort + ":" + lSID;
-      }
-      else {
-        //Otherwise construct service name connect syntax
-        lConnectionString = JDBC_PREFIX + "//" + lHostName + ":" + lPort + "/" + lServiceName;
-      }
-      
-    }   
-    
-    return lConnectionString;
-  }
   
   /**
    * Establishes a connection to the database using the command line options provided. Note that these connections should
    * be cleaned up after use.
-   * @param pCommandLine CommandLine containing all required arguments.
+   * @param pDBConnParams CommandLine containing all required arguments.
    * @return A DatabaseConnection wrapper object which contains active JDBC connections.
    * @throws ExPromote If the connection fails.
    */
-  public static DatabaseConnection createConnection(CommandLineWrapper pCommandLine) 
+  public static DatabaseConnection createConnection(DatabaseConnectionParams pDBConnParams)
   throws ExPromote {
-    return createConnection(pCommandLine, pCommandLine.hasOption(CommandLineOption.DB_SYSDBA), true, true);
+    return createConnection(pDBConnParams, pDBConnParams.shouldConnectAsSysDBA(), true, true);
   }
   
   /**
    * Establishes a connection to the database using the command line options provided. Note that these connections should
    * be cleaned up after use.
-   * @param pCommandLine CommandLine containing all required arguments.
+   * @param pDBConnParams CommandLine containing all required arguments.
    * @param pCheckVersion If true, asserts that the latest ScriptRunner patch to be run is expected by this version of ScriptRunner.
    * @return A DatabaseConnection wrapper object which contains active JDBC connections.
    * @throws ExPromote If the connection fails.
    */
-  public static DatabaseConnection createConnection(CommandLineWrapper pCommandLine, boolean pCheckVersion) 
+  public static DatabaseConnection createConnection(DatabaseConnectionParams pDBConnParams, boolean pCheckVersion)
   throws ExPromote {
-    return createConnection(pCommandLine, pCommandLine.hasOption(CommandLineOption.DB_SYSDBA), true, pCheckVersion);
+    return createConnection(pDBConnParams, pDBConnParams.shouldConnectAsSysDBA(), true, pCheckVersion);
   }
   
   /**
    * Establishes a connection to the database using the command line options provided. Note that these connections should
    * be cleaned up after use.
-   * @param pCommandLine CommandLine containing all required arguments.
+   * @param pDBConnParams CommandLine containing all required arguments.
    * @param pConnectAsSysDBA Set to true if a SYSDBA promotion connection is required.
    * @param pCreateLoggingConnection Set to true if a logging connection is required.
    * @param pCheckVersion If true, asserts that the latest ScriptRunner patch to be run is expected by this version of ScriptRunner.
    * @return A DatabaseConnection wrapper object which contains active JDBC connections.
    * @throws ExPromote If the connection fails.
    */
-  public static DatabaseConnection createConnection(CommandLineWrapper pCommandLine, boolean pConnectAsSysDBA, boolean pCreateLoggingConnection, boolean pCheckVersion) 
+  public static DatabaseConnection createConnection(DatabaseConnectionParams pDBConnParams, boolean pConnectAsSysDBA, boolean pCreateLoggingConnection, boolean pCheckVersion)
   throws ExPromote {
     
     //Establish a connection string    
-    String lConnectionString = establishConnectionString(pCommandLine);
+    String lConnectionString = pDBConnParams.getConnectionSting();
     
     //Establish username and password
-    String lOverridePromoteUser = pCommandLine.getOption(CommandLineOption.PROMOTE_USER);
+    String lOverridePromoteUser = pDBConnParams.getPromoteUser();
     //Connect as a specified user if specified, or as PROMOTEMGR by default
     String lPromoteUser = (XFUtil.isNull(lOverridePromoteUser) ? DEFAULT_PROMOTE_USER : lOverridePromoteUser).toUpperCase();
     
-    String lPassword = pCommandLine.getOption(CommandLineOption.PROMOTE_PASSWORD);    
+    String lPassword = pDBConnParams.getPromoteUserPassword();
     if(XFUtil.isNull(lPassword)){
       lPassword = CommandLineWrapper.readPassword("Enter password for " + lPromoteUser);
     }

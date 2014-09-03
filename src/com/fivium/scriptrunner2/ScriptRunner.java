@@ -72,7 +72,9 @@ implements FileResolver {
   
   /** List of log entries which is populated when ScriptRunner is run in -noexec mode */
   private final List<NoExecLogEntry> mNoExecLog = new ArrayList<NoExecLogEntry>();
-    
+
+  private DatabaseConnectionParams mDatabaseConnectionParams = null;
+
   /**
    * Entry point for performing a ScriptRunner promotion.
    * @param pCommandLineWrapper Command line object containing all applicable options for this run.
@@ -113,7 +115,11 @@ implements FileResolver {
     
     mCommandLineWrapper = pCommandLineWrapper;
     String lSourceLocation = mCommandLineWrapper.getOption(CommandLineOption.RUN);
-    
+
+
+    this.mDatabaseConnectionParams = new CommandLineDatabaseConnectionParams(pCommandLineWrapper);
+
+
     //Validate source location is not null
     if(XFUtil.isNull(lSourceLocation)){
       throw new ExFatalError("-" + CommandLineOption.RUN.getArgString() + " argument must be specified");
@@ -376,7 +382,7 @@ implements FileResolver {
       }
       
       //Establish a connection to the target database
-      mDatabaseConnection = DatabaseConnection.createConnection(mCommandLineWrapper);
+      mDatabaseConnection = DatabaseConnection.createConnection(mDatabaseConnectionParams);
       
       //Create a new promotion controller for interfacing with the database log tables
       mPromotionController = createPromotionController(lManifestParser.getPromotionPropertyMap().get(ManifestParser.PROMOTION_LABEL_PROPERTY));

@@ -1,6 +1,7 @@
 package com.fivium.scriptrunner2.update;
 
 
+import com.fivium.scriptrunner2.CommandLineDatabaseConnectionParams;
 import com.fivium.scriptrunner2.CommandLineWrapper;
 import com.fivium.scriptrunner2.Logger;
 import com.fivium.scriptrunner2.PatchScript;
@@ -124,7 +125,7 @@ public class Updater {
     
     DatabaseConnection lDatabaseConnection;
     try {     
-      lDatabaseConnection = DatabaseConnection.createConnection(mCommandLineWrapper, false, true, false);
+      lDatabaseConnection = DatabaseConnection.createConnection(new CommandLineDatabaseConnectionParams(this.mCommandLineWrapper), false, true, false);
     }
     catch (ExPromote e) {
       throw new ExUpdater("Failed to connect to database: " + e.getMessage(), e);
